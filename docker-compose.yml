@@ -1,0 +1,21 @@
+version: '3'
+services:
+  backend-api:
+    image: adc-backend-api
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - "8080:80"
+
+  frontend:
+    image: adc-frontend
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend-api

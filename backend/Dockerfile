@@ -1,10 +1,14 @@
+# Build
 FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine as build
 WORKDIR /app
-COPY . .
+COPY backend/*.sln ./
+COPY backend/WebApi/*.csproj ./WebApi/
 RUN dotnet restore
-RUN dotnet publish -o /app/published-app
+COPY backend/ ./
+RUN dotnet publish -c Release -o out
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine as runtime
+# Production
+FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine as production
 WORKDIR /app
-COPY --from=build /app/published-app /app
-ENTRYPOINT [ "dotnet", "/app/WebApi.dll" ]
+COPY --from=build /app/out .
+ENTRYPOINT [ "dotnet", "WebApi.dll" ]
