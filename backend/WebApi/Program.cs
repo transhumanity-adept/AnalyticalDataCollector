@@ -1,24 +1,61 @@
+using System.Reflection;
+using FluentValidation;
+using MediatR;
 using WebApi;
-using WebApi.Services;
 using Microsoft.EntityFrameworkCore;
+using WebApi.Features.Tasks.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddSingleton<IDataCollectionTaskManager, DataCollectionTaskManager>();
-builder.Services.AddScoped<IDataCollectionTaskService, DataCollectionTaskService>();
-builder.Services.AddDbContext<DatabaseContext>(optBuilder => optBuilder.UseSqlite("Filename=store.db"));
+builder.Services.AddMemoryCache();
+builder.Services.AddAutoMapper(Assembly.GetExecutingAssembly());
+builder.Services.AddMediatR(Assembly.GetExecutingAssembly());
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+builder.Services.AddSignalR();
+
+#region AddServices
+builder.Services.AddSingleton<IBackgroundDataCollectionTaskService, BackgroundDataCollectionTaskService>();
+#endregion
+
+
+builder.Services.AddDbContext<DatabaseContext>(
+    optBuilder => optBuilder.UseNpgsql(
+            builder.Environment.IsDevelopment() ?
+                Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+                : Environment.GetEnvironmentVariable("DB_CONNECTION_STRING_DEVELOPMENT")
+        )
+);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.Services.GetService<IDataCollectionTaskManager>();
-
 app.UseRouting();
-app.UseEndpoints(opt => opt.MapControllers());
+app.UseEndpoints(opt =>
+{
+    opt.MapControllers();
+    opt.MapHub<ApplicationHub>("/backendhub");
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+// Initializing database
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+        DatabaseInitializer.Initialize(context);
+    }
+    catch (Exception e)
+    {
+        Console.WriteLine(e.Message);
+        return;
+    }
+}
+
+// Create singleton services
 
 app.Run();

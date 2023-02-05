@@ -1,21 +1,51 @@
 version: '3'
+
+networks:
+  adc-network:
+    driver:  bridge
+
 services:
-  backend-api:
+  api:
+    container_name: adc-backend-api-container
     image: adc-backend-api
     restart: unless-stopped
     build:
       context: .
       dockerfile: ./backend/Dockerfile
     ports:
-      - "8080:80"
+      - "8005:80"
+    networks:
+      - adc-network
+    
 
   frontend:
-    image: adc-frontend
+    container_name: adc-frontend-vue-container
+    image: adc-frontend-vue
     restart: unless-stopped
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
     ports:
-      - "8081:80"
+      - "8010:80"
     depends_on:
       - backend-api
+    networks:
+      - adc-network
+  
+  postgres:
+    container_name: adc-postgres_container
+    image: postgres:latest
+    ports:
+      - "8015:5432"
+    restart: always
+    volumes:
+      - postgres:/data/postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: analyticaldatacollection
+    networks:
+      - adc-network
+
+volumes:
+  postgres:
